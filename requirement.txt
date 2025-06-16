@@ -1,8 +1,11 @@
-streamlit
-torch==2.1.0
+streamlit==1.33.0
+torch==2.1.0+cpu
+torchvision==0.16.0+cpu
+torchaudio==2.1.0+cpu
 torch-geometric==2.4.0
 rdkit-pypi
+pandas
 networkx
 matplotlib
-pandas
 scikit-learn
+--extra-index-url https://download.pytorch.org/whl/cpu

@@ -8,17 +8,30 @@ from torch_geometric.nn import GCNConv, GAE
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
 
-# Load cleaned dataset with display_name
-drug_df = pd.read_csv("drugbank_cleaned.csv.zip")
-model_state = torch.load("gnn_ddi_model.pt")
-z = torch.load("drug_embeddings.pt")
+# ---------------- Logging Checkpoints ----------------
+st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
+st.title("🚀 Drug–Drug Interaction Predictor")
+st.write("✅ App has started loading...")
 
-# Mapping
-drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
-index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
-id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
+# ---------------- Load Data & Model ----------------
+st.write("📦 Loading dataset...")
+try:
+    drug_df = pd.read_csv("drugbank_cleaned.csv.zip")
+    st.success("✅ Dataset loaded.")
+except Exception as e:
+    st.error(f"❌ Failed to load dataset: {e}")
+    st.stop()
 
-# GNN model
+st.write("📦 Loading model and embeddings...")
+try:
+    model_state = torch.load("gnn_ddi_model.pt", map_location=torch.device('cpu'))
+    z = torch.load("drug_embeddings.pt", map_location=torch.device('cpu'))
+    st.success("✅ Model & embeddings loaded.")
+except Exception as e:
+    st.error(f"❌ Failed to load model/embeddings: {e}")
+    st.stop()
+
+# ---------------- Model Definition ----------------
 class GCNEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
         super(GCNEncoder, self).__init__()
@@ -37,16 +50,14 @@ model = GAE(GCNEncoder(in_channels, out_channels))
 model.load_state_dict(model_state)
 model.eval()
 
-# Drop drugs with no display_name
+# ---------------- Data Prep ----------------
 drug_df = drug_df[drug_df['display_name'].notnull() & (drug_df['display_name'].str.strip() != '')]
-
-# Rebuild the mappings
 drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
 index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
 id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
 drug_names = sorted(set(drug_df['display_name'].tolist()))
 
-# Prediction
+# ---------------- Prediction ----------------
 def predict_interaction(drug1, drug2):
     try:
         id1 = drug_df[drug_df['display_name'] == drug1]['drugbank_id'].values[0]
@@ -60,7 +71,6 @@ def predict_interaction(drug1, drug2):
     except:
         return None
 
-# Risk label
 def get_risk_label(score):
     if score >= 0.75:
         return "🔴 High Risk", "red"
@@ -69,11 +79,10 @@ def get_risk_label(score):
     else:
         return "🟢 Low Risk", "green"
 
-# Placeholder molecule rendering
 def show_molecule_placeholder(drug_name):
     st.markdown(f"🧬 Molecule for **{drug_name}** not available (RDKit excluded).")
 
-# Graph
+# ---------------- Graph ----------------
 def build_ddi_graph():
     edge_list = []
     for i, row in drug_df.iterrows():
@@ -113,8 +122,6 @@ def show_interaction_graph(drug1, drug2):
         st.warning("❗Could not render interaction graph.")
 
 # ---------------- UI ----------------
-st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
-st.title("💊 Drug–Drug Interaction Prediction (GNN)")
 st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
 
 col1, col2 = st.columns(2)
@@ -137,40 +144,3 @@ if st.button("🔍 Predict Interaction"):
         st.markdown("---")
         st.subheader("🧠 Drug Interaction Subgraph")
         show_interaction_graph(drug1, drug2)
-
-
-
-import streamlit as st
-import torch
-import os
-
-st.set_page_config(page_title="DDI App Name Mapping", layout="centered")
-
-# 🧠 Checkpoint 1
-st.title("🚀 Drug–Drug Interaction Predictor")
-st.write("✅ App has started loading...")
-
-# 🧠 Checkpoint 2: Before loading model
-st.write("📦 Loading GNN model...")
-
-try:
-    model = torch.load("gnn_ddi_model.pt", map_location=torch.device("cpu"))
-    model.eval()
-    st.success("✅ Model loaded successfully.")
-except Exception as e:
-    st.error(f"❌ Failed to load model: {e}")
-
-# 🧠 Checkpoint 3: Before loading embeddings
-st.write("📦 Loading drug embeddings...")
-
-try:
-    drug_embeddings = torch.load("drug_embeddings.pt", map_location=torch.device("cpu"))
-    st.success("✅ Embeddings loaded successfully.")
-except Exception as e:
-    st.error(f"❌ Failed to load embeddings: {e}")
-
-# 🧠 Continue rest of your UI logic below
-# Example dummy UI
-st.write("👀 Ready for drug selection...")
-
-

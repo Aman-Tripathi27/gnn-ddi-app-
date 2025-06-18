@@ -137,3 +137,40 @@ if st.button("🔍 Predict Interaction"):
         st.markdown("---")
         st.subheader("🧠 Drug Interaction Subgraph")
         show_interaction_graph(drug1, drug2)
+
+
+
+import streamlit as st
+import torch
+import os
+
+st.set_page_config(page_title="DDI App Name Mapping", layout="centered")
+
+# 🧠 Checkpoint 1
+st.title("🚀 Drug–Drug Interaction Predictor")
+st.write("✅ App has started loading...")
+
+# 🧠 Checkpoint 2: Before loading model
+st.write("📦 Loading GNN model...")
+
+try:
+    model = torch.load("gnn_ddi_model.pt", map_location=torch.device("cpu"))
+    model.eval()
+    st.success("✅ Model loaded successfully.")
+except Exception as e:
+    st.error(f"❌ Failed to load model: {e}")
+
+# 🧠 Checkpoint 3: Before loading embeddings
+st.write("📦 Loading drug embeddings...")
+
+try:
+    drug_embeddings = torch.load("drug_embeddings.pt", map_location=torch.device("cpu"))
+    st.success("✅ Embeddings loaded successfully.")
+except Exception as e:
+    st.error(f"❌ Failed to load embeddings: {e}")
+
+# 🧠 Continue rest of your UI logic below
+# Example dummy UI
+st.write("👀 Ready for drug selection...")
+
+

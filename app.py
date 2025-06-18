@@ -10,6 +10,10 @@ from torch_geometric.utils import to_networkx
 import gdown
 import os
 
+
+st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="centered")
+
+
 # --- CONFIG ---
 CSV_FILE_ID = "191koSx0r0cBSxgU8U8kNcmYGA6rcrl1E"
 CSV_FILENAME = "drugbank_cleaned.csv"

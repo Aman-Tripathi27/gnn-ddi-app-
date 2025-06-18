@@ -1,11 +1,11 @@
---extra-index-url https://download.pytorch.org/whl/cpu
+ --extra-index-url https://download.pytorch.org/whl/cpu
 
 streamlit==1.33.0
 torch>=2.5,<2.6
 torchvision==0.22.1
 torch-geometric
 matplotlib>=3.8
-numpy>=1.26
+numpy>=1.26,<2.0
 pandas>=2.2
 networkx
 

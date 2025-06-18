@@ -1,5 +1,5 @@
 streamlit==1.33.0
-torch==2.2.2
+torch>=2.5.0,<2.6
 torchvision==0.22.1
 rdkit-pypi==2022.9.5
 networkx==3.3

@@ -7,36 +7,36 @@ import networkx as nx
 from torch_geometric.nn import GCNConv, GAE
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
+import gdown
+import os
 
-st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
-st.title("💊 Drug–Drug Interaction Predictor")
-st.write("🚀 App is starting...")
+# --- CONFIG ---
+CSV_FILE_ID = "191koSx0r0cBSxgU8U8kNcmYGA6rcrl1E"
+CSV_FILENAME = "drugbank_cleaned.csv"
 
-# ---------------- Load Data ----------------
+# --- DOWNLOAD FROM GOOGLE DRIVE ---
 @st.cache_data
-def load_data():
-    df = pd.read_csv("drugbank_cleaned.csv.zip")
-    df = df[df['display_name'].notnull() & (df['display_name'].str.strip() != '')]
-    return df
+def download_csv():
+    if not os.path.exists(CSV_FILENAME):
+        gdown.download(f"https://drive.google.com/uc?id={CSV_FILE_ID}", CSV_FILENAME, quiet=False)
+    return pd.read_csv(CSV_FILENAME)
 
-drug_df = load_data()
+# --- LOAD DATA ---
+drug_df = download_csv()
+model_state = torch.load("gnn_ddi_model.pt", map_location="cpu")
+z = torch.load("drug_embeddings.pt", map_location="cpu")
 
-@st.cache_resource
-def load_model_and_embeddings():
-    model_state = torch.load("gnn_ddi_model.pt", map_location="cpu")
-    embeddings = torch.load("drug_embeddings.pt", map_location="cpu")
-    return model_state, embeddings
+# --- MAPPINGS ---
+drug_df = drug_df[drug_df['display_name'].notnull() & (drug_df['display_name'].str.strip() != '')]
+drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
+index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
+id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
+drug_names = sorted(set(drug_df['display_name'].tolist()))
 
-try:
-    model_state, z = load_model_and_embeddings()
-except Exception as e:
-    st.error(f"❌ Model load failed: {e}")
-    st.stop()
-
-# ---------------- GCN Model ----------------
+# --- GNN MODEL ---
 class GCNEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
-        super().__init__()
+        super(GCNEncoder, self).__init__()
         self.conv1 = GCNConv(in_channels, 128)
         self.conv2 = GCNConv(128, out_channels)
 
@@ -52,13 +52,7 @@ model = GAE(GCNEncoder(in_channels, out_channels))
 model.load_state_dict(model_state)
 model.eval()
 
-# ---------------- Mapping ----------------
-drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
-index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
-id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
-drug_names = sorted(drug_df['display_name'].unique().tolist())
-
-# ---------------- Prediction Logic ----------------
+# --- PREDICT FUNCTION ---
 def predict_interaction(drug1, drug2):
     try:
         id1 = drug_df[drug_df['display_name'] == drug1]['drugbank_id'].values[0]
@@ -69,9 +63,10 @@ def predict_interaction(drug1, drug2):
             return None
         score = torch.sigmoid((z[idx1] * z[idx2]).sum()).item()
         return score
-    except Exception as e:
+    except:
         return None
 
+# --- RISK LABELS ---
 def get_risk_label(score):
     if score >= 0.75:
         return "🔴 High Risk", "red"
@@ -80,9 +75,11 @@ def get_risk_label(score):
     else:
         return "🟢 Low Risk", "green"
 
+# --- PLACEHOLDER FOR MOLECULE VIEW ---
 def show_molecule_placeholder(drug_name):
     st.markdown(f"🧬 Molecule for **{drug_name}** not available (RDKit excluded).")
 
+# --- GRAPH CONSTRUCTION ---
 def build_ddi_graph():
     edge_list = []
     for i, row in drug_df.iterrows():
@@ -118,11 +115,13 @@ def show_interaction_graph(drug1, drug2):
         fig, ax = plt.subplots(figsize=(8, 8))
         nx.draw(subG, pos, labels=labels, node_color=color_map, node_size=800, font_size=9, ax=ax)
         st.pyplot(fig)
-    except Exception as e:
-        st.warning("❗Could not render graph.")
+    except:
+        st.warning("❗Could not render interaction graph.")
 
-# ---------------- UI ----------------
-st.markdown("Select two drugs below to predict their interaction.")
+# --- UI ---
+st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
+st.title("💊 Drug–Drug Interaction Prediction (GNN)")
+st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
 
 col1, col2 = st.columns(2)
 with col1:

@@ -7,8 +7,6 @@ import networkx as nx
 from torch_geometric.nn import GCNConv, GAE
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
-from rdkit import Chem
-from rdkit.Chem import Draw
 
 # Load cleaned dataset with display_name
 drug_df = pd.read_csv("drugbank_cleaned.csv.zip")
@@ -39,7 +37,6 @@ model = GAE(GCNEncoder(in_channels, out_channels))
 model.load_state_dict(model_state)
 model.eval()
 
-# Build dropdown with valid display names only
 # Drop drugs with no display_name
 drug_df = drug_df[drug_df['display_name'].notnull() & (drug_df['display_name'].str.strip() != '')]
 
@@ -47,10 +44,7 @@ drug_df = drug_df[drug_df['display_name'].notnull() & (drug_df['display_name'].s
 drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
 index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
 id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
-
-# Build dropdown list
 drug_names = sorted(set(drug_df['display_name'].tolist()))
-
 
 # Prediction
 def predict_interaction(drug1, drug2):
@@ -75,24 +69,21 @@ def get_risk_label(score):
     else:
         return "🟢 Low Risk", "green"
 
-# Molecule rendering
-def show_molecule(drug_name):
-    smiles = drug_df[drug_df['display_name'] == drug_name]['smiles'].values[0]
-    mol = Chem.MolFromSmiles(smiles)
-    if mol:
-        st.image(Draw.MolToImage(mol, size=(300, 300)))
-    else:
-        st.warning("⚠️ Molecule not renderable.")
+# Placeholder molecule rendering
+def show_molecule_placeholder(drug_name):
+    st.markdown(f"🧬 Molecule for **{drug_name}** not available (RDKit excluded).")
 
 # Graph
 def build_ddi_graph():
     edge_list = []
     for i, row in drug_df.iterrows():
         src = drug_id_to_index.get(row['drugbank_id'])
-        for tgt_id in str(row['interactions']).split('|'):
+        for tgt_id in str(row.get('interactions', '')).split('|'):
             tgt = drug_id_to_index.get(tgt_id)
             if tgt is not None:
                 edge_list.append([src, tgt])
+    if not edge_list:
+        return None
     edge_index = torch.tensor(edge_list, dtype=torch.long).T
     x_dummy = torch.randn(len(z), in_channels)
     return Data(x=x_dummy, edge_index=edge_index)
@@ -100,6 +91,9 @@ def build_ddi_graph():
 def show_interaction_graph(drug1, drug2):
     try:
         G_data = build_ddi_graph()
+        if G_data is None:
+            st.warning("⚠️ No interaction graph could be built.")
+            return
         G = to_networkx(G_data, to_undirected=True)
         id1 = drug_df[drug_df['display_name'] == drug1]['drugbank_id'].values[0]
         id2 = drug_df[drug_df['display_name'] == drug2]['drugbank_id'].values[0]
@@ -126,11 +120,11 @@ st.markdown("Select two real-world drugs and predict their interaction using a G
 col1, col2 = st.columns(2)
 with col1:
     drug1 = st.selectbox("Select Drug 1", drug_names)
-    show_molecule(drug1)
+    show_molecule_placeholder(drug1)
 
 with col2:
     drug2 = st.selectbox("Select Drug 2", drug_names)
-    show_molecule(drug2)
+    show_molecule_placeholder(drug2)
 
 if st.button("🔍 Predict Interaction"):
     score = predict_interaction(drug1, drug2)

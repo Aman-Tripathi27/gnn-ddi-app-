@@ -1,7 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 streamlit==1.33.0
-torch==2.5.1+cpu
+torch==2.2.1+cpu
 torchvision==0.17.1+cpu
 torch-geometric==2.6.1
 matplotlib>=3.8

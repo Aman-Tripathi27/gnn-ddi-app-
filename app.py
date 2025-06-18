@@ -8,33 +8,35 @@ from torch_geometric.nn import GCNConv, GAE
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
 
-# ---------------- Logging Checkpoints ----------------
 st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
-st.title("🚀 Drug–Drug Interaction Predictor")
-st.write("✅ App has started loading...")
+st.title("💊 Drug–Drug Interaction Predictor")
+st.write("🚀 App is starting...")
 
-# ---------------- Load Data & Model ----------------
-st.write("📦 Loading dataset...")
+# ---------------- Load Data ----------------
+@st.cache_data
+def load_data():
+    df = pd.read_csv("drugbank_cleaned.csv.zip")
+    df = df[df['display_name'].notnull() & (df['display_name'].str.strip() != '')]
+    return df
+
+drug_df = load_data()
+
+@st.cache_resource
+def load_model_and_embeddings():
+    model_state = torch.load("gnn_ddi_model.pt", map_location="cpu")
+    embeddings = torch.load("drug_embeddings.pt", map_location="cpu")
+    return model_state, embeddings
+
 try:
-    drug_df = pd.read_csv("drugbank_cleaned.csv.zip")
-    st.success("✅ Dataset loaded.")
+    model_state, z = load_model_and_embeddings()
 except Exception as e:
-    st.error(f"❌ Failed to load dataset: {e}")
+    st.error(f"❌ Model load failed: {e}")
     st.stop()
 
-st.write("📦 Loading model and embeddings...")
-try:
-    model_state = torch.load("gnn_ddi_model.pt", map_location=torch.device('cpu'))
-    z = torch.load("drug_embeddings.pt", map_location=torch.device('cpu'))
-    st.success("✅ Model & embeddings loaded.")
-except Exception as e:
-    st.error(f"❌ Failed to load model/embeddings: {e}")
-    st.stop()
-
-# ---------------- Model Definition ----------------
+# ---------------- GCN Model ----------------
 class GCNEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(GCNEncoder, self).__init__()
+        super().__init__()
         self.conv1 = GCNConv(in_channels, 128)
         self.conv2 = GCNConv(128, out_channels)
 
@@ -50,14 +52,13 @@ model = GAE(GCNEncoder(in_channels, out_channels))
 model.load_state_dict(model_state)
 model.eval()
 
-# ---------------- Data Prep ----------------
-drug_df = drug_df[drug_df['display_name'].notnull() & (drug_df['display_name'].str.strip() != '')]
+# ---------------- Mapping ----------------
 drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
 index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
 id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
-drug_names = sorted(set(drug_df['display_name'].tolist()))
+drug_names = sorted(drug_df['display_name'].unique().tolist())
 
-# ---------------- Prediction ----------------
+# ---------------- Prediction Logic ----------------
 def predict_interaction(drug1, drug2):
     try:
         id1 = drug_df[drug_df['display_name'] == drug1]['drugbank_id'].values[0]
@@ -68,7 +69,7 @@ def predict_interaction(drug1, drug2):
             return None
         score = torch.sigmoid((z[idx1] * z[idx2]).sum()).item()
         return score
-    except:
+    except Exception as e:
         return None
 
 def get_risk_label(score):
@@ -82,7 +83,6 @@ def get_risk_label(score):
 def show_molecule_placeholder(drug_name):
     st.markdown(f"🧬 Molecule for **{drug_name}** not available (RDKit excluded).")
 
-# ---------------- Graph ----------------
 def build_ddi_graph():
     edge_list = []
     for i, row in drug_df.iterrows():
@@ -118,11 +118,11 @@ def show_interaction_graph(drug1, drug2):
         fig, ax = plt.subplots(figsize=(8, 8))
         nx.draw(subG, pos, labels=labels, node_color=color_map, node_size=800, font_size=9, ax=ax)
         st.pyplot(fig)
-    except:
-        st.warning("❗Could not render interaction graph.")
+    except Exception as e:
+        st.warning("❗Could not render graph.")
 
 # ---------------- UI ----------------
-st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
+st.markdown("Select two drugs below to predict their interaction.")
 
 col1, col2 = st.columns(2)
 with col1:

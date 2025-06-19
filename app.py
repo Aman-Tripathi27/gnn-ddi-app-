@@ -3,10 +3,9 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-import networkx as nx
+import plotly.graph_objects as go
 from torch_geometric.nn import GCNConv, GAE
 from torch_geometric.data import Data
-from torch_geometric.utils import to_networkx
 import os
 
 # ✅ MUST BE FIRST
@@ -82,46 +81,28 @@ def get_risk_label(score):
     else:
         return "🟢 Low Risk", "green"
 
-def build_ddi_graph():
-    edge_list = []
-    for i, row in df.iterrows():
-        src = id_to_index.get(row['drugbank_id'])
-        for tgt_id in str(row.get('interactions', '')).split('|'):
-            tgt = id_to_index.get(tgt_id)
-            if src is not None and tgt is not None:
-                edge_list.append([src, tgt])
-    if not edge_list:
-        return None
-    edge_index = torch.tensor(edge_list, dtype=torch.long).T
-    x_dummy = torch.randn(len(z), IN_CHANNELS)
-    return Data(x=x_dummy, edge_index=edge_index)
-
-def show_interaction_graph(drug1, drug2):
-    G_data = build_ddi_graph()
-    if G_data is None:
-        st.warning("⚠️ No interaction graph could be built.")
-        return
-    G = to_networkx(G_data, to_undirected=True)
-    id1 = name_to_id[drug1]
-    id2 = name_to_id[drug2]
-    idx1 = id_to_index[id1]
-    idx2 = id_to_index[id2]
-
-    # Get neighbors safely
-    nodes = {idx1, idx2}
-    try:
-        nodes.update(G.neighbors(idx1))
-        nodes.update(G.neighbors(idx2))
-    except Exception:
-        pass
-
-    subG = G.subgraph(nodes)
-    color_map = ["red" if n == idx1 else "green" if n == idx2 else "gray" for n in subG.nodes]
-    labels = {n: id_to_name.get(index_to_id[n], f"Drug {n}") for n in subG.nodes}
-    pos = nx.spring_layout(subG)
-    fig, ax = plt.subplots(figsize=(8, 8))
-    nx.draw(subG, pos, labels=labels, node_color=color_map, node_size=700, font_size=9, ax=ax)
-    st.pyplot(fig)
+def show_risk_gauge(score):
+    st.subheader("📉 Interaction Risk Gauge")
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=score * 100,
+        title={'text': "Interaction Risk (%)"},
+        gauge={
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "darkblue"},
+            'steps': [
+                {'range': [0, 40], 'color': "lightgreen"},
+                {'range': [40, 75], 'color': "orange"},
+                {'range': [75, 100], 'color': "red"},
+            ],
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.8,
+                'value': score * 100
+            }
+        }
+    ))
+    st.plotly_chart(fig, use_container_width=True)
 
 # ----------------- UI ------------------
 st.title("💊 Drug–Drug Interaction Prediction (GNN)")
@@ -142,5 +123,4 @@ if st.button("🔍 Predict Interaction"):
         st.markdown(f"### Interaction Score: <span style='color:limegreen'><b>{score:.4f}</b></span>", unsafe_allow_html=True)
         st.markdown(f"### Risk Level: <span style='color:{color}'>{label}</span>", unsafe_allow_html=True)
         st.markdown("---")
-        st.subheader("🧠 Drug Interaction Subgraph")
-        show_interaction_graph(drug1, drug2)
+        show_risk_gauge(score)

@@ -1,4 +1,8 @@
+# ✅ VERY FIRST THING
 import streamlit as st
+st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
+
+# --- Imports ---
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -10,34 +14,22 @@ from torch_geometric.utils import to_networkx
 import gdown
 import os
 
-
-st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="centered")
-
-
 # --- CONFIG ---
 CSV_FILE_ID = "191koSx0r0cBSxgU8U8kNcmYGA6rcrl1E"
 CSV_FILENAME = "drugbank_cleaned.csv"
 
 # --- DOWNLOAD FROM GOOGLE DRIVE ---
 @st.cache_data
-def download_csv():
+def load_data():
     if not os.path.exists(CSV_FILENAME):
         gdown.download(f"https://drive.google.com/uc?id={CSV_FILE_ID}", CSV_FILENAME, quiet=False)
     return pd.read_csv(CSV_FILENAME)
 
-# --- LOAD DATA ---
-drug_df = download_csv()
-model_state = torch.load("gnn_ddi_model.pt", map_location="cpu")
-z = torch.load("drug_embeddings.pt", map_location="cpu")
+# Load model and embeddings
+model_state = torch.load("gnn_ddi_model.pt", map_location=torch.device("cpu"))
+z = torch.load("drug_embeddings.pt", map_location=torch.device("cpu"))
 
-# --- MAPPINGS ---
-drug_df = drug_df[drug_df['display_name'].notnull() & (drug_df['display_name'].str.strip() != '')]
-drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
-index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
-id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
-drug_names = sorted(set(drug_df['display_name'].tolist()))
-
-# --- GNN MODEL ---
+# GCN Encoder
 class GCNEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
         super(GCNEncoder, self).__init__()
@@ -50,13 +42,24 @@ class GCNEncoder(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return x
 
+# Initialize model
 in_channels = 5
 out_channels = 64
 model = GAE(GCNEncoder(in_channels, out_channels))
 model.load_state_dict(model_state)
 model.eval()
 
-# --- PREDICT FUNCTION ---
+# Load CSV
+drug_df = load_data()
+drug_df = drug_df[drug_df['display_name'].notnull() & (drug_df['display_name'].str.strip() != '')]
+
+# Mappings
+drug_id_to_index = {row['drugbank_id']: i for i, row in drug_df.iterrows()}
+index_to_id = {i: row['drugbank_id'] for i, row in drug_df.iterrows()}
+id_to_name = {row['drugbank_id']: row['display_name'] for _, row in drug_df.iterrows()}
+drug_names = sorted(set(drug_df['display_name'].tolist()))
+
+# Prediction
 def predict_interaction(drug1, drug2):
     try:
         id1 = drug_df[drug_df['display_name'] == drug1]['drugbank_id'].values[0]
@@ -70,7 +73,6 @@ def predict_interaction(drug1, drug2):
     except:
         return None
 
-# --- RISK LABELS ---
 def get_risk_label(score):
     if score >= 0.75:
         return "🔴 High Risk", "red"
@@ -79,11 +81,9 @@ def get_risk_label(score):
     else:
         return "🟢 Low Risk", "green"
 
-# --- PLACEHOLDER FOR MOLECULE VIEW ---
 def show_molecule_placeholder(drug_name):
     st.markdown(f"🧬 Molecule for **{drug_name}** not available (RDKit excluded).")
 
-# --- GRAPH CONSTRUCTION ---
 def build_ddi_graph():
     edge_list = []
     for i, row in drug_df.iterrows():
@@ -122,8 +122,7 @@ def show_interaction_graph(drug1, drug2):
     except:
         st.warning("❗Could not render interaction graph.")
 
-# --- UI ---
-st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
+# ---------------- UI ----------------
 st.title("💊 Drug–Drug Interaction Prediction (GNN)")
 st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
 

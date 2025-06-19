@@ -14,8 +14,8 @@ st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide"
 # ----------------- CONFIG -----------------
 MODEL_PATH = "gnn_ddi_model.pt"
 EMBEDDING_PATH = "drug_embeddings.pt"
-CSV_PATH = "drugbank_extracted.csv"  # Your original training data
-IN_CHANNELS = 5  # Must match the trained model
+CSV_PATH = "drugbank_extracted.csv"
+IN_CHANNELS = 5
 
 # ----------------- MODEL ------------------
 class GCNEncoder(torch.nn.Module):
@@ -44,15 +44,12 @@ def load_data_and_model():
     id_to_name = {row['drugbank_id']: row['name'] for _, row in df.iterrows()}
     drug_names = sorted(df['name'].unique())
 
-    # Load model
     encoder = GCNEncoder(in_channels=IN_CHANNELS, hidden_channels=128)
     model = GAE(encoder)
     model.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
     model.eval()
 
-    # Load embeddings
     z = torch.load(EMBEDDING_PATH, map_location="cpu")
-
     return df, model, z, name_to_id, id_to_index, index_to_id, id_to_name, drug_names
 
 df, model, z, name_to_id, id_to_index, index_to_id, id_to_name, drug_names = load_data_and_model()
@@ -64,14 +61,12 @@ def predict_interaction(drug1, drug2):
         id2 = name_to_id[drug2]
         idx1 = id_to_index[id1]
         idx2 = id_to_index[id2]
-
         if idx1 >= len(z) or idx2 >= len(z):
             return None
-
         score = torch.sigmoid((z[idx1] * z[idx2]).sum()).item()
-        return score
+        return score, idx1, idx2
     except Exception:
-        return None
+        return None, None, None
 
 def get_risk_label(score):
     if score >= 0.75:
@@ -104,6 +99,15 @@ def show_risk_gauge(score):
     ))
     st.plotly_chart(fig, use_container_width=True)
 
+def show_similarity_chart(idx1, idx2, score):
+    st.subheader("🧬 Embedding-Based Similarity")
+    fig = go.Figure(data=[
+        go.Bar(name="Self Similarity", x=[drug1, drug2], y=[1.0, 1.0], marker_color="green"),
+        go.Bar(name="Mutual Similarity", x=[f"{drug1} vs {drug2}"], y=[score], marker_color="orange")
+    ])
+    fig.update_layout(barmode='group', yaxis=dict(range=[0, 1.1]), height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
 # ----------------- UI ------------------
 st.title("💊 Drug–Drug Interaction Prediction (GNN)")
 st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
@@ -115,7 +119,7 @@ with col2:
     drug2 = st.selectbox("Select Drug 2", drug_names)
 
 if st.button("🔍 Predict Interaction"):
-    score = predict_interaction(drug1, drug2)
+    score, idx1, idx2 = predict_interaction(drug1, drug2)
     if score is None:
         st.error("❌ Could not compute score for these drugs.")
     else:
@@ -124,3 +128,4 @@ if st.button("🔍 Predict Interaction"):
         st.markdown(f"### Risk Level: <span style='color:{color}'>{label}</span>", unsafe_allow_html=True)
         st.markdown("---")
         show_risk_gauge(score)
+        show_similarity_chart(idx1, idx2, score)

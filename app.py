@@ -12,7 +12,6 @@ import os
 # ✅ MUST BE FIRST
 st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
 
-
 # ----------------- CONFIG -----------------
 MODEL_PATH = "gnn_ddi_model.pt"
 EMBEDDING_PATH = "drug_embeddings.pt"
@@ -33,7 +32,7 @@ class GCNEncoder(torch.nn.Module):
         return x
 
 # ----------------- LOAD DATA ------------------
-@st.cache_data
+@st.cache_resource
 def load_data_and_model():
     df = pd.read_csv(CSV_PATH)
     df = df[df['name'].notna()]
@@ -72,7 +71,7 @@ def predict_interaction(drug1, drug2):
 
         score = torch.sigmoid((z[idx1] * z[idx2]).sum()).item()
         return score
-    except Exception as e:
+    except Exception:
         return None
 
 def get_risk_label(score):
@@ -89,7 +88,7 @@ def build_ddi_graph():
         src = id_to_index.get(row['drugbank_id'])
         for tgt_id in str(row.get('interactions', '')).split('|'):
             tgt = id_to_index.get(tgt_id)
-            if tgt is not None:
+            if src is not None and tgt is not None:
                 edge_list.append([src, tgt])
     if not edge_list:
         return None
@@ -107,9 +106,15 @@ def show_interaction_graph(drug1, drug2):
     id2 = name_to_id[drug2]
     idx1 = id_to_index[id1]
     idx2 = id_to_index[id2]
+
+    # Get neighbors safely
     nodes = {idx1, idx2}
-    nodes.update(G.neighbors(idx1))
-    nodes.update(G.neighbors(idx2))
+    try:
+        nodes.update(G.neighbors(idx1))
+        nodes.update(G.neighbors(idx2))
+    except Exception:
+        pass
+
     subG = G.subgraph(nodes)
     color_map = ["red" if n == idx1 else "green" if n == idx2 else "gray" for n in subG.nodes]
     labels = {n: id_to_name.get(index_to_id[n], f"Drug {n}") for n in subG.nodes}
@@ -119,7 +124,6 @@ def show_interaction_graph(drug1, drug2):
     st.pyplot(fig)
 
 # ----------------- UI ------------------
-st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
 st.title("💊 Drug–Drug Interaction Prediction (GNN)")
 st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
 

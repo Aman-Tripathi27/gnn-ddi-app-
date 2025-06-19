@@ -9,3 +9,4 @@ numpy>=1.26,<2.0
 pandas>=2.2
 networkx
 gdown
+plotly>=5.18.0

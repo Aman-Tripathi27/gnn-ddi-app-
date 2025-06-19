@@ -9,6 +9,10 @@ from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
 import os
 
+# ✅ MUST BE FIRST
+st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide")
+
+
 # ----------------- CONFIG -----------------
 MODEL_PATH = "gnn_ddi_model.pt"
 EMBEDDING_PATH = "drug_embeddings.pt"

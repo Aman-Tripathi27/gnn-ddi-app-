@@ -15,6 +15,7 @@ st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide"
 MODEL_PATH = "gnn_ddi_model.pt"
 EMBEDDING_PATH = "drug_embeddings.pt"
 CSV_PATH = "drugbank_extracted.csv"
+MATCHED_NAMES_PATH = "matched_names.csv"
 IN_CHANNELS = 5
 
 # ----------------- MODEL ------------------
@@ -37,6 +38,14 @@ def load_data_and_model():
     df = df[df['name'].notna()]
     df = df[df['name'].str.strip() != '']
     df.reset_index(drop=True, inplace=True)
+
+    # ✅ Inject better names if available
+    try:
+        match_df = pd.read_csv(MATCHED_NAMES_PATH)
+        match_dict = dict(zip(match_df["drugbank_id"], match_df["matched_name"]))
+        df["name"] = df["drugbank_id"].map(match_dict).fillna(df["name"])
+    except Exception as e:
+        st.warning(f"⚠️ Clean name mapping skipped: {e}")
 
     name_to_id = {row['name']: row['drugbank_id'] for _, row in df.iterrows()}
     id_to_index = {row['drugbank_id']: i for i, row in df.iterrows()}
@@ -62,7 +71,7 @@ def predict_interaction(drug1, drug2):
         idx1 = id_to_index[id1]
         idx2 = id_to_index[id2]
         if idx1 >= len(z) or idx2 >= len(z):
-            return None
+            return None, None, None
         score = torch.sigmoid((z[idx1] * z[idx2]).sum()).item()
         return score, idx1, idx2
     except Exception:

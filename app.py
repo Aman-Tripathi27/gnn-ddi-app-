@@ -62,7 +62,7 @@ def predict_interaction(drug1, drug2):
         idx1 = id_to_index[id1]
         idx2 = id_to_index[id2]
         if idx1 >= len(z) or idx2 >= len(z):
-            return None
+            return None, None, None
         score = torch.sigmoid((z[idx1] * z[idx2]).sum()).item()
         return score, idx1, idx2
     except Exception:
@@ -109,14 +109,22 @@ def show_similarity_chart(idx1, idx2, score):
     st.plotly_chart(fig, use_container_width=True)
 
 # ----------------- UI ------------------
-st.title("💊 Drug–Drug Interaction Prediction (GNN)")
-st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
+st.title("💊 Drug–Drug Interaction Prediction")
+st.caption("Built with GNN and PyTorch Geometric")
+
+with st.expander("ℹ️ How does this work?"):
+    st.markdown("""
+    - This app uses a Graph Neural Network to predict interaction between two drugs.
+    - Drug embeddings are learned using GCN on DrugBank graph.
+    - You select two drugs, and the model estimates how likely they interact.
+    - A score closer to 1.0 means high chance of interaction.
+    """)
 
 col1, col2 = st.columns(2)
 with col1:
-    drug1 = st.selectbox("Select Drug 1", drug_names)
+    drug1 = st.selectbox("🔹 Select Drug 1", drug_names)
 with col2:
-    drug2 = st.selectbox("Select Drug 2", drug_names)
+    drug2 = st.selectbox("🔸 Select Drug 2", drug_names)
 
 if st.button("🔍 Predict Interaction"):
     score, idx1, idx2 = predict_interaction(drug1, drug2)
@@ -126,6 +134,9 @@ if st.button("🔍 Predict Interaction"):
         label, color = get_risk_label(score)
         st.markdown(f"### Interaction Score: <span style='color:limegreen'><b>{score:.4f}</b></span>", unsafe_allow_html=True)
         st.markdown(f"### Risk Level: <span style='color:{color}'>{label}</span>", unsafe_allow_html=True)
-        st.markdown("---")
+        st.divider()
         show_risk_gauge(score)
         show_similarity_chart(idx1, idx2, score)
+
+st.markdown("---")
+st.caption("🧠 Powered by Graph Neural Networks · Trained on DrugBank · UI built with Streamlit")

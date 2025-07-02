@@ -1,64 +1,89 @@
-# 💊 Drug–Drug Interaction Prediction System (GNN-based)
+# 💊 Drug–Drug Interaction Prediction using GNN
 
-This project implements a **Graph Neural Network (GNN)** to predict potential **drug–drug interactions (DDIs)** using real-world data. The model leverages chemical and interaction data from DrugBank to assess and visualize the risk level when two drugs are taken together.
+A cutting-edge machine learning project that predicts drug–drug interactions (DDIs) using **graph neural networks (GNNs)**. Trained on real-world biomedical data (DrugBank), this app helps assess potential risks when combining medications — especially useful for doctors, pharmacists, or researchers.
 
-> ✅ Fully functional **Streamlit web app** included  
-> ✅ Trained on ~17,000 drugs  
-> ✅ Embeds an intuitive risk gauge + drug subgraph  
-> ✅ Built using PyTorch Geometric and GCN-GAE
+> ⚠️ Built with 20+ days of iteration, debugging, and refining. Special attention given to real-world drug names and clean UX.
 
 ---
 
-## 🔬 Project Motivation
-
-Adverse drug–drug interactions are a major safety concern in clinical treatment. Our goal was to build a personalized, explainable tool to:
-
-- Simulate interaction risk between any two known drugs  
-- Help doctors/pharmacists make informed prescription decisions  
-- Leverage **graph-based deep learning** for molecular-level insight
+## 🚀 Live Demo
+🌐 [Streamlit App](https://gnn-ddi.streamlit.app) – Interact with the model, select two drugs, and get an instant risk score with visual gauges.
 
 ---
 
-## 🧠 Model Architecture
+## 📌 Key Features
 
-- **Input Data**: DrugBank records with `drug_id`, `drug_name`, `SMILES`, and interaction links
-- **Graph Structure**: Drugs as nodes, interactions as edges
-- **Model**: GCN-based Autoencoder (GAE)
-  - Encoder: 2-layer Graph Convolutional Network
-  - Embedding space: `z = encoder(x, edge_index)`
-  - Similarity score: `sigmoid(dot(z1, z2))`
-
----
-
-## ⚙️ Tech Stack
-
-| Component | Tool |
-|----------|------|
-| Web UI | Streamlit |
-| Deep Learning | PyTorch + PyTorch Geometric |
-| Graphs | NetworkX, Plotly |
-| Data Source | DrugBank CSV |
-| Deployment | Streamlit Cloud-ready |
+- ✅ **GNN-based DDI prediction** – Embedding-based link prediction using `torch-geometric`
+- 🧠 **Trained on DrugBank** – Built from ~17k real drugs with SMILES + interaction pairs
+- 📉 **Risk meter** – Dynamic Plotly gauge chart for risk visualization
+- 🔍 **Name-cleaned UI** – Human-readable drug names (cleaned using RxNorm & manual mappings)
+- 🧬 **Embedding similarity bar chart** – Understand how similar the drugs are internally
+- 🌐 **Streamlit Cloud Ready** – Lightweight deployment, fast inference
 
 ---
 
-## 🚀 Features
+## 🛠 Tech Stack
 
-- 🔍 Predict interaction between any two drugs
-- 📉 Risk score (Low / Moderate / High)
-- 📊 Gauge visual for clinical interpretability
-- 🧠 GNN-trained embeddings (based on real interaction graph)
-- 🌐 Fast & intuitive drug search via dropdowns
-- 🔗 Trained model + embeddings are preloaded
-
----
-
-## 📸 App Preview
-
-https://gnn-ddi.streamlit.app/
+| Component        | Tech / Library        |
+|------------------|------------------------|
+| ML Model         | Graph AutoEncoder (GAE) |
+| GNN Framework    | PyTorch Geometric       |
+| UI               | Streamlit + Plotly      |
+| Dataset          | DrugBank (SMILES, Interactions) |
+| Name Cleaning    | Manual + RxNorm Mapping |
+| Deployment       | Streamlit Cloud         |
 
 ---
 
-## 🏁 Getting Started
+## 🧪 How It Works
 
+1. Drugs and their interactions are converted into a graph:  
+   - Nodes = drugs  
+   - Edges = interactions  
+   - Node features = SMILES-derived embeddings
 
+2. A GAE model is trained to predict links between drug pairs using their embeddings.
+
+3. Users select two drugs → model calculates the interaction probability.
+
+---
+
+## 📂 File Structure
+
+├── app.py # Streamlit frontend
+├── gnn_ddi_model.pt # Trained GAE model
+├── drug_embeddings.pt # Node embeddings (from encoder)
+├── drugbank_extracted_cleaned.csv # Final cleaned drug metadata
+├── requirements.txt # Dependencies for Streamlit Cloud
+└── README.md # Project description
+
+---
+
+## 🙋‍♂️ Future Work
+
+- Add molecule rendering using RDKit (local only, not on Streamlit Cloud)
+- Enhance with side effect types or severity classification
+- Integrate PubChem or RxNorm APIs for live name matching
+
+---
+
+## 🙌 Acknowledgements
+
+- DrugBank (data)
+- PyTorch Geometric
+- Streamlit
+- Plotly
+
+---
+
+## 🧠 Author
+
+**Aman Tripathi**  
+Aspiring Healthcare AI Researcher & Data Consultant  
+Let’s connect on [LinkedIn](https://www.linkedin.com/in/amantripathi27)
+
+---
+
+## 📜 License
+
+MIT License

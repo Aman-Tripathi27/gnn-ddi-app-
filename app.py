@@ -14,7 +14,7 @@ st.set_page_config(page_title="Drug–Drug Interaction Predictor", layout="wide"
 # ----------------- CONFIG -----------------
 MODEL_PATH = "gnn_ddi_model.pt"
 EMBEDDING_PATH = "drug_embeddings.pt"
-CSV_PATH = "drugbank_extracted.csv"
+CSV_PATH = "drugbank_extracted_cleaned.csv"  # ✅ UPDATED here
 IN_CHANNELS = 5
 
 # ----------------- MODEL ------------------
@@ -34,15 +34,15 @@ class GCNEncoder(torch.nn.Module):
 @st.cache_resource
 def load_data_and_model():
     df = pd.read_csv(CSV_PATH)
-    df = df[df['name'].notna()]
-    df = df[df['name'].str.strip() != '']
+    df = df[df['clean_name'].notna()]
+    df = df[df['clean_name'].str.strip() != '']
     df.reset_index(drop=True, inplace=True)
 
-    name_to_id = {row['name']: row['drugbank_id'] for _, row in df.iterrows()}
+    name_to_id = {row['clean_name']: row['drugbank_id'] for _, row in df.iterrows()}
     id_to_index = {row['drugbank_id']: i for i, row in df.iterrows()}
     index_to_id = {i: row['drugbank_id'] for i, row in df.iterrows()}
-    id_to_name = {row['drugbank_id']: row['name'] for _, row in df.iterrows()}
-    drug_names = sorted(df['name'].unique())
+    id_to_name = {row['drugbank_id']: row['clean_name'] for _, row in df.iterrows()}
+    drug_names = sorted(df['clean_name'].unique())
 
     encoder = GCNEncoder(in_channels=IN_CHANNELS, hidden_channels=128)
     model = GAE(encoder)
@@ -109,22 +109,14 @@ def show_similarity_chart(idx1, idx2, score):
     st.plotly_chart(fig, use_container_width=True)
 
 # ----------------- UI ------------------
-st.title("💊 Drug–Drug Interaction Prediction")
-st.caption("Built with GNN and PyTorch Geometric")
-
-with st.expander("ℹ️ How does this work?"):
-    st.markdown("""
-    - This app uses a Graph Neural Network to predict interaction between two drugs.
-    - Drug embeddings are learned using GCN on DrugBank graph.
-    - You select two drugs, and the model estimates how likely they interact.
-    - A score closer to 1.0 means high chance of interaction.
-    """)
+st.title("💊 Drug–Drug Interaction Prediction (GNN)")
+st.markdown("Select two real-world drugs and predict their interaction using a GNN model.")
 
 col1, col2 = st.columns(2)
 with col1:
-    drug1 = st.selectbox("🔹 Select Drug 1", drug_names)
+    drug1 = st.selectbox("Select Drug 1", drug_names)
 with col2:
-    drug2 = st.selectbox("🔸 Select Drug 2", drug_names)
+    drug2 = st.selectbox("Select Drug 2", drug_names)
 
 if st.button("🔍 Predict Interaction"):
     score, idx1, idx2 = predict_interaction(drug1, drug2)
@@ -134,9 +126,6 @@ if st.button("🔍 Predict Interaction"):
         label, color = get_risk_label(score)
         st.markdown(f"### Interaction Score: <span style='color:limegreen'><b>{score:.4f}</b></span>", unsafe_allow_html=True)
         st.markdown(f"### Risk Level: <span style='color:{color}'>{label}</span>", unsafe_allow_html=True)
-        st.divider()
+        st.markdown("---")
         show_risk_gauge(score)
         show_similarity_chart(idx1, idx2, score)
-
-st.markdown("---")
-st.caption("🧠 Powered by Graph Neural Networks · Trained on DrugBank · UI built with Streamlit")

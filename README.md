@@ -8,7 +8,7 @@ A machine learning system that predicts drug–drug interactions (DDIs) using **
 
 ## 🚀 Live Demo
 
-🌐 [streamlit]([https://huggingface.co/spaces/aman1527/gnn-drug-interaction](https://gnndrugdiscovery.streamlit.app)) — Select two drugs, get instant interaction probability with visual gauges.
+🌐 [streamlit](https://huggingface.co/spaces/aman1527/gnn-drug-interaction](https://gnndrugdiscovery.streamlit.app) — Select two drugs, get instant interaction probability with visual gauges.
 
 ---
 

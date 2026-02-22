@@ -10,3 +10,12 @@ pandas>=2.2
 networkx
 gdown
 plotly>=5.18.0
+
+streamlit
+torch
+torch-geometric
+pandas
+numpy
+rdkit
+plotly
+scikit-learn
